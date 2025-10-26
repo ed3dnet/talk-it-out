@@ -10,6 +10,9 @@ dependencies = [
     "tomli>=2.0.0; python_version < '3.11'",
     "tomli-w>=1.0.0",
     "evdev>=1.6.0",
+    "numpy",
+    "sounddevice>=0.5.3",
+    "scipy",
 ]
 
 [project.scripts]

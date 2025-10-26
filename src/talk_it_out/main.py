@@ -8,7 +8,7 @@ import queue
 from pathlib import Path
 from typing import Optional
 
-from talk_it_out.framework import config, config_io, logging_setup, permissions, signals, keyboard, keyboard_io
+from talk_it_out.framework import config, config_io, logging_setup, permissions, signals, keyboard, keyboard_io, audio, audio_io
 
 app = typer.Typer()
 
@@ -24,6 +24,13 @@ def run(
     ok, error = permissions.check_input_group()
     if not ok:
         print(error, file=sys.stderr)
+        sys.exit(1)
+
+    # Check PortAudio dependency
+    from talk_it_out.framework import audio_deps
+    available, error = audio_deps.check_portaudio()
+    if not available:
+        print(f"❌ {error}", file=sys.stderr)
         sys.exit(1)
 
     # Load configuration
@@ -62,6 +69,13 @@ def run(
 
     log.info("keyboard_monitoring_started", combos=list(target_combos.keys()))
 
+    # Initialize audio recorder
+    audio_recorder = audio_io.AudioRecorder(
+        sample_rate=cfg["audio"]["sample_rate"],
+        channels=cfg["audio"]["channels"],
+        device=cfg["audio"]["device"]
+    )
+
     # Event processing loop
     try:
         while True:
@@ -75,12 +89,27 @@ def run(
                         device=combo_event.device_path
                     )
 
+                    if combo_event.combo_type == 'record_for_paste':
+                        audio_recorder.start_recording()
+
                 elif combo_event.event_type == 'combo_released':
                     log.info(
                         "combo_released",
                         combo=combo_event.combo_type,
                         device=combo_event.device_path
                     )
+
+                    if combo_event.combo_type == 'record_for_paste':
+                        audio_data = audio_recorder.stop_recording()
+
+                        # Validate audio data
+                        valid, error = audio.validate_audio_data(audio_data)
+                        if not valid:
+                            log.warning("audio_invalid", reason=error)
+                        else:
+                            # Save WAV file
+                            wav_path = audio_recorder.save_wav(audio_data)
+                            log.info("recording_complete", wav_path=str(wav_path))
 
             except queue.Empty:
                 # Timeout - continue loop (allows periodic signal checking)
@@ -96,6 +125,13 @@ def config_edit():
     """Edit configuration file in $EDITOR and validate."""
     from talk_it_out.commands.config_edit import edit_config
     sys.exit(edit_config())
+
+
+@app.command()
+def select_audio_device():
+    """Select audio input device interactively."""
+    from talk_it_out.commands.select_audio_device import select_audio_device
+    sys.exit(select_audio_device())
 
 
 if __name__ == "__main__":
