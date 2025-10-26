@@ -35,8 +35,13 @@ def default_config() -> dict:
             "device": "",
         },
         "whisper": {
-            "model": "base",
-            "language": "",
+            "model": "turbo",
+            "language": "en",
+            "device": "auto",
+            "compute_type": "auto",
+            "beam_size": 5,
+            "vad_filter": True,
+            "save_debug_audio": False,
         },
         "paste": {
             "method": "clipboard",
@@ -47,7 +52,23 @@ def default_config() -> dict:
     }
 
 
-VALID_WHISPER_MODELS = ["tiny", "base", "small", "medium", "large"]
+VALID_WHISPER_MODELS = ["tiny", "base", "small", "medium", "large", "turbo"]
+VALID_DEVICES = ["auto", "cuda", "cpu"]
+VALID_COMPUTE_TYPES = [
+    "auto", "int8", "int8_float32", "int8_float16",
+    "int16", "float16", "float32"
+]
+# ISO 639-1 language codes supported by Whisper
+VALID_LANGUAGES = [
+    "en", "zh", "de", "es", "ru", "ko", "fr", "ja", "pt", "tr", "pl", "ca", "nl",
+    "ar", "sv", "it", "id", "hi", "fi", "vi", "he", "uk", "el", "ms", "cs", "ro",
+    "da", "hu", "ta", "no", "th", "ur", "hr", "bg", "lt", "la", "mi", "ml", "cy",
+    "sk", "te", "fa", "lv", "bn", "sr", "az", "sl", "kn", "et", "mk", "br", "eu",
+    "is", "hy", "ne", "mn", "bs", "kk", "sq", "sw", "gl", "mr", "pa", "si", "km",
+    "sn", "yo", "so", "af", "oc", "ka", "be", "tg", "sd", "gu", "am", "yi", "lo",
+    "uz", "fo", "ht", "ps", "tk", "nn", "mt", "sa", "lb", "my", "bo", "tl", "mg",
+    "as", "tt", "haw", "ln", "ha", "ba", "jw", "su"
+]
 VALID_LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR"]
 
 
@@ -120,11 +141,67 @@ def validate_config(cfg: dict) -> list[str]:
     elif cfg["audio"]["channels"] not in (1, 2):
         errors.append("audio.channels must be 1 or 2")
 
-    # Validate whisper.model
+    # Validate whisper.model (required)
     if "whisper" not in cfg or "model" not in cfg["whisper"]:
         errors.append("Missing whisper.model")
     elif cfg["whisper"]["model"] not in VALID_WHISPER_MODELS:
         errors.append(f"Invalid whisper.model: {cfg['whisper']['model']}. Must be one of: {VALID_WHISPER_MODELS}")
+
+    # Validate whisper.language (required)
+    if "whisper" not in cfg or "language" not in cfg["whisper"]:
+        errors.append("Missing whisper.language")
+    elif cfg["whisper"]["language"] not in VALID_LANGUAGES:
+        errors.append(
+            f"Invalid whisper.language: {cfg['whisper']['language']}. "
+            f"Must be a valid ISO 639-1 language code."
+        )
+
+    # Validate whisper.device (required)
+    if "whisper" not in cfg or "device" not in cfg["whisper"]:
+        errors.append("Missing whisper.device")
+    elif cfg["whisper"]["device"] not in VALID_DEVICES:
+        errors.append(
+            f"Invalid whisper.device: {cfg['whisper']['device']}. "
+            f"Must be one of: {VALID_DEVICES}"
+        )
+
+    # Validate whisper.compute_type (required)
+    if "whisper" not in cfg or "compute_type" not in cfg["whisper"]:
+        errors.append("Missing whisper.compute_type")
+    elif cfg["whisper"]["compute_type"] not in VALID_COMPUTE_TYPES:
+        errors.append(
+            f"Invalid whisper.compute_type: {cfg['whisper']['compute_type']}. "
+            f"Must be one of: {VALID_COMPUTE_TYPES}"
+        )
+
+    # Validate whisper.beam_size (required)
+    if "whisper" not in cfg or "beam_size" not in cfg["whisper"]:
+        errors.append("Missing whisper.beam_size")
+    else:
+        beam_size = cfg["whisper"]["beam_size"]
+        if not isinstance(beam_size, int) or beam_size < 1 or beam_size > 10:
+            errors.append(
+                f"Invalid whisper.beam_size: {beam_size}. "
+                "Must be an integer between 1 and 10."
+            )
+
+    # Validate whisper.vad_filter (required, boolean)
+    if "whisper" not in cfg or "vad_filter" not in cfg["whisper"]:
+        errors.append("Missing whisper.vad_filter")
+    elif not isinstance(cfg["whisper"]["vad_filter"], bool):
+        errors.append(
+            f"Invalid whisper.vad_filter: {cfg['whisper']['vad_filter']}. "
+            "Must be a boolean (true or false)."
+        )
+
+    # Validate whisper.save_debug_audio (required, boolean)
+    if "whisper" not in cfg or "save_debug_audio" not in cfg["whisper"]:
+        errors.append("Missing whisper.save_debug_audio")
+    elif not isinstance(cfg["whisper"]["save_debug_audio"], bool):
+        errors.append(
+            f"Invalid whisper.save_debug_audio: {cfg['whisper']['save_debug_audio']}. "
+            "Must be a boolean (true or false)."
+        )
 
     # Validate logging.level
     if "logging" not in cfg or "level" not in cfg["logging"]:

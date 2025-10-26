@@ -8,7 +8,7 @@ import queue
 from pathlib import Path
 from typing import Optional
 
-from talk_it_out.framework import config, config_io, logging_setup, permissions, signals, keyboard, keyboard_io, audio, audio_io
+from talk_it_out.framework import config, config_io, logging_setup, permissions, signals, keyboard, keyboard_io, audio, audio_io, whisper_io
 
 app = typer.Typer()
 
@@ -76,6 +76,20 @@ def run(
         device=cfg["audio"]["device"]
     )
 
+    # Initialize transcriber
+    try:
+        transcriber = whisper_io.Transcriber(cfg["whisper"])
+        log.info(
+            "transcriber_initialized",
+            model=cfg["whisper"]["model"],
+            device=transcriber.device,
+            compute_type=transcriber.compute_type,
+        )
+    except RuntimeError as e:
+        print(f"❌ Failed to load Whisper model: {e}", file=sys.stderr)
+        print("   This may be the first run. Ensure internet connectivity for model download.", file=sys.stderr)
+        sys.exit(1)
+
     # Event processing loop
     try:
         while True:
@@ -107,9 +121,29 @@ def run(
                         if not valid:
                             log.warning("audio_invalid", reason=error)
                         else:
-                            # Save WAV file
+                            # Save WAV file (always - transcription reads from this)
                             wav_path = audio_recorder.save_wav(audio_data)
-                            log.info("recording_complete", wav_path=str(wav_path))
+                            keep_debug = cfg["whisper"].get("save_debug_audio", False)
+                            if keep_debug:
+                                log.debug("debug_audio_saved", wav_path=str(wav_path))
+
+                            # Transcribe from WAV file
+                            try:
+                                text = transcriber.transcribe_from_wav(wav_path)
+                                if not text:
+                                    log.warning("transcription_empty", reason="No speech detected")
+                                else:
+                                    log.info("transcription_result", text=text[:100])  # First 100 chars
+                                    # TODO: Paste text into focused window (Phase 5)
+                            except Exception as e:
+                                log.warning("transcription_failed", error=str(e))
+                            finally:
+                                # Clean up WAV file unless debugging
+                                if not keep_debug:
+                                    try:
+                                        wav_path.unlink()
+                                    except Exception:
+                                        pass  # Ignore cleanup errors
 
             except queue.Empty:
                 # Timeout - continue loop (allows periodic signal checking)

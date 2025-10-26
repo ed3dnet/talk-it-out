@@ -53,11 +53,17 @@ def test_default_config_audio_section():
 
 
 def test_default_config_whisper_section():
-    """Whisper section should use base model"""
+    """Test that default config includes whisper section with all required keys."""
     cfg = config.default_config()
 
-    assert cfg["whisper"]["model"] == "base"
-    assert cfg["whisper"]["language"] == ""
+    assert "whisper" in cfg
+    assert cfg["whisper"]["model"] == "turbo"
+    assert cfg["whisper"]["language"] == "en"
+    assert cfg["whisper"]["device"] == "auto"
+    assert cfg["whisper"]["compute_type"] == "auto"
+    assert cfg["whisper"]["beam_size"] == 5
+    assert cfg["whisper"]["vad_filter"] is True
+    assert cfg["whisper"]["save_debug_audio"] is False
 
 
 def test_default_config_logging_section():
@@ -265,3 +271,199 @@ def test_load_config_validates_loaded_config(tmp_path):
         assert False, "Should have raised ValueError"
     except ValueError as e:
         assert "model" in str(e).lower()
+
+
+def test_validate_config_rejects_invalid_whisper_device():
+    """Test that validate_config rejects invalid whisper.device values."""
+    cfg = config.default_config()
+    cfg["whisper"]["device"] = "invalid"
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("whisper.device" in err for err in errors)
+
+
+def test_validate_config_accepts_valid_whisper_devices():
+    """Test that validate_config accepts all valid device values."""
+    cfg = config.default_config()
+
+    for device in ["auto", "cuda", "cpu"]:
+        cfg["whisper"]["device"] = device
+        errors = config.validate_config(cfg)
+        assert len(errors) == 0, f"device={device} should be valid"
+
+
+def test_validate_config_rejects_invalid_compute_type():
+    """Test that validate_config rejects invalid whisper.compute_type values."""
+    cfg = config.default_config()
+    cfg["whisper"]["compute_type"] = "invalid"
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("whisper.compute_type" in err for err in errors)
+
+
+def test_validate_config_accepts_valid_compute_types():
+    """Test that validate_config accepts all valid compute_type values."""
+    cfg = config.default_config()
+
+    valid_types = ["auto", "int8", "int8_float32", "int8_float16",
+                   "int16", "float16", "float32"]
+    for compute_type in valid_types:
+        cfg["whisper"]["compute_type"] = compute_type
+        errors = config.validate_config(cfg)
+        assert len(errors) == 0, f"compute_type={compute_type} should be valid"
+
+
+def test_validate_config_rejects_invalid_beam_size():
+    """Test that validate_config rejects beam_size outside 1-10 range."""
+    cfg = config.default_config()
+
+    # Test below range
+    cfg["whisper"]["beam_size"] = 0
+    errors = config.validate_config(cfg)
+    assert len(errors) > 0
+    assert any("whisper.beam_size" in err for err in errors)
+
+    # Test above range
+    cfg["whisper"]["beam_size"] = 11
+    errors = config.validate_config(cfg)
+    assert len(errors) > 0
+    assert any("whisper.beam_size" in err for err in errors)
+
+
+def test_validate_config_accepts_valid_beam_sizes():
+    """Test that validate_config accepts beam_size in 1-10 range."""
+    cfg = config.default_config()
+
+    for beam_size in [1, 5, 10]:
+        cfg["whisper"]["beam_size"] = beam_size
+        errors = config.validate_config(cfg)
+        assert len(errors) == 0, f"beam_size={beam_size} should be valid"
+
+
+def test_validate_config_rejects_non_boolean_vad_filter():
+    """Test that validate_config rejects non-boolean vad_filter."""
+    cfg = config.default_config()
+    cfg["whisper"]["vad_filter"] = "true"  # String instead of bool
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("whisper.vad_filter" in err for err in errors)
+
+
+def test_validate_config_rejects_non_boolean_save_debug_audio():
+    """Test that validate_config rejects non-boolean save_debug_audio."""
+    cfg = config.default_config()
+    cfg["whisper"]["save_debug_audio"] = 1  # Int instead of bool
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("whisper.save_debug_audio" in err for err in errors)
+
+
+def test_validate_config_accepts_boolean_whisper_flags():
+    """Test that validate_config accepts boolean values for flags."""
+    cfg = config.default_config()
+
+    cfg["whisper"]["vad_filter"] = True
+    cfg["whisper"]["save_debug_audio"] = False
+    errors = config.validate_config(cfg)
+    assert len(errors) == 0
+
+    cfg["whisper"]["vad_filter"] = False
+    cfg["whisper"]["save_debug_audio"] = True
+    errors = config.validate_config(cfg)
+    assert len(errors) == 0
+
+
+def test_validate_config_rejects_missing_whisper_device():
+    """Test that validate_config rejects missing whisper.device field."""
+    cfg = config.default_config()
+    del cfg["whisper"]["device"]
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("whisper.device" in err for err in errors)
+
+
+def test_validate_config_rejects_missing_whisper_compute_type():
+    """Test that validate_config rejects missing whisper.compute_type field."""
+    cfg = config.default_config()
+    del cfg["whisper"]["compute_type"]
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("whisper.compute_type" in err for err in errors)
+
+
+def test_validate_config_rejects_missing_whisper_beam_size():
+    """Test that validate_config rejects missing whisper.beam_size field."""
+    cfg = config.default_config()
+    del cfg["whisper"]["beam_size"]
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("whisper.beam_size" in err for err in errors)
+
+
+def test_validate_config_rejects_missing_whisper_vad_filter():
+    """Test that validate_config rejects missing whisper.vad_filter field."""
+    cfg = config.default_config()
+    del cfg["whisper"]["vad_filter"]
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("whisper.vad_filter" in err for err in errors)
+
+
+def test_validate_config_rejects_missing_whisper_save_debug_audio():
+    """Test that validate_config rejects missing whisper.save_debug_audio field."""
+    cfg = config.default_config()
+    del cfg["whisper"]["save_debug_audio"]
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("whisper.save_debug_audio" in err for err in errors)
+
+
+def test_validate_config_rejects_missing_whisper_language():
+    """Test that validate_config rejects missing whisper.language field."""
+    cfg = config.default_config()
+    del cfg["whisper"]["language"]
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("whisper.language" in err for err in errors)
+
+
+def test_validate_config_rejects_invalid_whisper_language():
+    """Test that validate_config rejects invalid whisper.language values."""
+    cfg = config.default_config()
+    cfg["whisper"]["language"] = "invalid_lang_code"
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("whisper.language" in err for err in errors)
+
+
+def test_validate_config_accepts_valid_whisper_languages():
+    """Test that validate_config accepts valid ISO 639-1 language codes."""
+    cfg = config.default_config()
+
+    # Test a few common language codes
+    for lang in ["en", "es", "fr", "de", "zh", "ja", "ru"]:
+        cfg["whisper"]["language"] = lang
+        errors = config.validate_config(cfg)
+        assert len(errors) == 0, f"language={lang} should be valid"

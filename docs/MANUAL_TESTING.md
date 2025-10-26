@@ -353,6 +353,181 @@ This is difficult to trigger intentionally, but verify by code inspection:
 
 ---
 
+## 7. Whisper Transcription Tests
+
+### 7.1 Model Download Verification (First Run Only)
+
+**Purpose:** Verify model downloads correctly on first run
+
+**Prerequisites:** Delete `~/.cache/huggingface/hub/` to force fresh download
+
+**Steps:**
+1. Start application
+2. Observe console output during startup
+
+**Expected:**
+- Whisper model downloads (may take 30s-2min depending on connection)
+- Application starts normally after download completes
+- Log shows "whisper_model_loaded" with model name
+
+**Actual:** [Pass/Fail]
+
+**Notes:**
+- Only happens on first run or when switching models
+- Subsequent runs load cached model instantly
+
+---
+
+### 7.2 Basic Transcription
+
+**Purpose:** Verify audio transcribes to text
+
+**Steps:**
+1. Start application
+2. Hold keyboard combo
+3. Speak clearly: "Hello world, this is a test"
+4. Release keyboard combo
+5. Check application logs
+
+**Expected:**
+- Log shows "transcription_complete" with segment count
+- Log shows "transcription_result" with transcribed text
+- Text matches spoken words reasonably well
+
+**Actual:** [Pass/Fail]
+
+**Notes:**
+- Check for language detection log entry
+- Turbo model should have high accuracy
+
+---
+
+### 7.3 Silent Audio Transcription
+
+**Purpose:** Verify handling of silence/no speech
+
+**Steps:**
+1. Start application
+2. Hold keyboard combo
+3. Remain silent for 2 seconds
+4. Release keyboard combo
+5. Check logs
+
+**Expected:**
+- Log shows "transcription_empty" warning with reason "No speech detected"
+- OR empty transcription result
+- No errors or crashes
+
+**Actual:** [Pass/Fail]
+
+---
+
+### 7.4 Debug Audio Saving
+
+**Purpose:** Verify save_debug_audio config works
+
+**Steps:**
+1. Edit config: Set `whisper.save_debug_audio = true`
+2. Start application
+3. Record audio (speak any phrase)
+4. Check `/tmp/` directory for WAV files
+
+**Expected:**
+- WAV file created in `/tmp/recording_*.wav`
+- Log shows "debug_audio_saved" with file path
+- WAV file playable with `aplay` or `ffplay`
+
+**Actual:** [Pass/Fail]
+
+**Steps (save_debug_audio = false):**
+1. Edit config: Set `whisper.save_debug_audio = false`
+2. Start application
+3. Record audio
+4. Check `/tmp/` directory
+
+**Expected:**
+- NO new WAV files created
+- No "debug_audio_saved" log entries
+- Transcription still works
+
+**Actual:** [Pass/Fail]
+
+---
+
+### 7.5 Different Model Sizes
+
+**Purpose:** Verify model switching works
+
+**Steps:**
+1. Edit config: Set `whisper.model = "tiny"`
+2. Start application
+3. Record and transcribe test phrase
+4. Note transcription quality
+5. Stop application
+6. Edit config: Set `whisper.model = "turbo"`
+7. Start application
+8. Record same test phrase
+9. Compare transcription quality
+
+**Expected:**
+- Both models load successfully
+- Turbo has better accuracy than tiny
+- Model switch requires app restart
+- Logs show different model names at startup
+
+**Actual:** [Pass/Fail]
+
+**Notes:**
+- Tiny: Fast but lower accuracy
+- Turbo: Best balance of speed/accuracy
+
+---
+
+### 7.6 Language Detection
+
+**Purpose:** Verify language auto-detection works
+
+**Steps:**
+1. Start application with `whisper.language = "en"`
+2. Record English phrase
+3. Check logs for detected_language
+4. Edit config: Set `whisper.language = "es"`
+5. Restart application
+6. Record Spanish phrase
+7. Check logs
+
+**Expected:**
+- Logs show detected_language matches config setting
+- Transcription respects language parameter
+- Language probability logged
+
+**Actual:** [Pass/Fail]
+
+---
+
+### 7.7 Device Auto-Detection
+
+**Purpose:** Verify CUDA/CPU auto-detection
+
+**Steps:**
+1. Edit config: Set `whisper.device = "auto"`
+2. Start application
+3. Check logs for transcriber_initialized
+
+**Expected (if CUDA available):**
+- device=cuda, compute_type=float16
+
+**Expected (if CPU only):**
+- device=cpu, compute_type=int8
+
+**Actual:** [Pass/Fail]
+
+**Notes:**
+- Use `nvidia-smi` to check CUDA availability
+- CPU fallback is automatic and transparent
+
+---
+
 ## Test Results Template
 
 Use this template to document test results:
@@ -390,6 +565,13 @@ Use this template to document test results:
 | 6.1 | Long Recording | PASS/FAIL | |
 | 6.2 | Rapid Cycles | PASS/FAIL | |
 | 6.3 | Silent Recording | PASS/FAIL | |
+| 7.1 | Model Download | PASS/FAIL | First run only |
+| 7.2 | Basic Transcription | PASS/FAIL | |
+| 7.3 | Silent Transcription | PASS/FAIL | |
+| 7.4 | Debug Audio Saving | PASS/FAIL | |
+| 7.5 | Model Sizes | PASS/FAIL | |
+| 7.6 | Language Detection | PASS/FAIL | |
+| 7.7 | Device Auto-Detection | PASS/FAIL | |
 
 **Issues Found:**
 - List any bugs, unexpected behavior, or concerns
