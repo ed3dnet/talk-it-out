@@ -43,8 +43,11 @@ def default_config() -> dict:
             "vad_filter": True,
             "save_debug_audio": False,
         },
-        "paste": {
-            "method": "clipboard",
+        "output": {
+            "strategy": "wl-clip-simplepaste",
+            "wl-clip": {
+                "targets": ["clipboard", "primary"],
+            },
         },
         "logging": {
             "level": "INFO",
@@ -70,6 +73,58 @@ VALID_LANGUAGES = [
     "as", "tt", "haw", "ln", "ha", "ba", "jw", "su"
 ]
 VALID_LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR"]
+
+
+def merge_configs(defaults: dict, user: dict) -> dict:
+    """Deep merge user config over defaults.
+
+    Args:
+        defaults: Complete config with all defaults
+        user: User overrides (can be partial)
+
+    Returns:
+        Merged config dict
+
+    Notes:
+        - Deep merge at section level
+        - User values override defaults
+        - Arrays are replaced entirely, not merged
+        - Preserves defaults for omitted user values
+    """
+    result = defaults.copy()
+
+    for key, user_value in user.items():
+        if key in result and isinstance(result[key], dict) and isinstance(user_value, dict):
+            # Deep merge dictionaries
+            result[key] = _merge_dicts(result[key], user_value)
+        else:
+            # Replace value (including arrays)
+            result[key] = user_value
+
+    return result
+
+
+def _merge_dicts(default_dict: dict, user_dict: dict) -> dict:
+    """Recursively merge two dictionaries.
+
+    Args:
+        default_dict: Default values
+        user_dict: User override values
+
+    Returns:
+        Merged dictionary
+    """
+    result = default_dict.copy()
+
+    for key, user_value in user_dict.items():
+        if key in result and isinstance(result[key], dict) and isinstance(user_value, dict):
+            # Recursively merge nested dicts
+            result[key] = _merge_dicts(result[key], user_value)
+        else:
+            # Replace value
+            result[key] = user_value
+
+    return result
 
 
 def validate_config(cfg: dict) -> list[str]:
@@ -202,6 +257,35 @@ def validate_config(cfg: dict) -> list[str]:
             f"Invalid whisper.save_debug_audio: {cfg['whisper']['save_debug_audio']}. "
             "Must be a boolean (true or false)."
         )
+
+    # Validate output section
+    if "output" not in cfg:
+        errors.append("Missing [output] section in config")
+    else:
+        output = cfg["output"]
+
+        if "strategy" not in output:
+            errors.append("Missing 'strategy' in [output] section")
+        else:
+            valid_strategies = {"wl-clip-simplepaste"}
+            if output["strategy"] not in valid_strategies:
+                errors.append(
+                    f"Invalid output strategy: '{output['strategy']}'. "
+                    f"Valid: {', '.join(valid_strategies)}"
+                )
+
+            # Validate strategy-specific config
+            if output["strategy"] == "wl-clip-simplepaste":
+                if "wl-clip" in output:
+                    wl_clip = output["wl-clip"]
+                    if "targets" in wl_clip:
+                        valid_targets = {"clipboard", "primary"}
+                        for target in wl_clip["targets"]:
+                            if target not in valid_targets:
+                                errors.append(
+                                    f"Invalid clipboard target: '{target}'. "
+                                    f"Valid: {', '.join(valid_targets)}"
+                                )
 
     # Validate logging.level
     if "logging" not in cfg or "level" not in cfg["logging"]:

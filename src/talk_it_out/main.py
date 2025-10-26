@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from talk_it_out.framework import config, config_io, logging_setup, permissions, signals, keyboard, keyboard_io, audio, audio_io, whisper_io
+from talk_it_out.output import create_output_strategy, OutputError
 
 app = typer.Typer()
 
@@ -90,6 +91,15 @@ def run(
         print("   This may be the first run. Ensure internet connectivity for model download.", file=sys.stderr)
         sys.exit(1)
 
+    # Create and verify output strategy
+    try:
+        output_strategy = create_output_strategy(cfg)
+        output_strategy.verify_dependencies()
+        log.info("output_strategy_initialized", strategy=cfg["output"]["strategy"])
+    except OutputError as e:
+        log.error("output_strategy_init_failed", error=str(e))
+        raise typer.Exit(code=1)
+
     # Event processing loop
     try:
         while True:
@@ -134,7 +144,13 @@ def run(
                                     log.warning("transcription_empty", reason="No speech detected")
                                 else:
                                     log.info("transcription_result", text=text[:100])  # First 100 chars
-                                    # TODO: Paste text into focused window (Phase 5)
+                                    # Paste transcribed text
+                                    try:
+                                        output_strategy.paste_text(text)
+                                        log.info("text_pasted_successfully")
+                                    except OutputError as e:
+                                        log.error("paste_failed", error=str(e))
+                                        # Don't crash - log error and continue listening
                             except Exception as e:
                                 log.warning("transcription_failed", error=str(e))
                             finally:

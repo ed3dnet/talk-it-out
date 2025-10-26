@@ -28,7 +28,7 @@ def test_default_config_returns_valid_structure():
     assert "keys" in cfg
     assert "audio" in cfg
     assert "whisper" in cfg
-    assert "paste" in cfg
+    assert "output" in cfg
     assert "logging" in cfg
 
 
@@ -467,3 +467,175 @@ def test_validate_config_accepts_valid_whisper_languages():
         cfg["whisper"]["language"] = lang
         errors = config.validate_config(cfg)
         assert len(errors) == 0, f"language={lang} should be valid"
+
+
+def test_validate_config_requires_output_section():
+    """Config must have [output] section."""
+    import pytest
+    cfg = config.default_config()
+    del cfg["output"]
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("output" in err.lower() for err in errors)
+
+
+def test_validate_config_requires_output_strategy():
+    """Config must specify output strategy."""
+    import pytest
+    cfg = config.default_config()
+    del cfg["output"]["strategy"]
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("strategy" in err.lower() for err in errors)
+
+
+def test_validate_config_accepts_wl_clip_simplepaste_strategy():
+    """wl-clip-simplepaste is valid strategy."""
+    cfg = config.default_config()
+    cfg["output"]["strategy"] = "wl-clip-simplepaste"
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) == 0
+
+
+def test_validate_config_rejects_unknown_strategy():
+    """Unknown strategies are rejected."""
+    cfg = config.default_config()
+    cfg["output"]["strategy"] = "invalid-strategy"
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("strategy" in err.lower() for err in errors)
+
+
+def test_validate_config_accepts_wl_clip_targets():
+    """wl-clip targets can be clipboard and/or primary."""
+    cfg = config.default_config()
+    cfg["output"]["wl-clip"] = {"targets": ["clipboard"]}
+    errors = config.validate_config(cfg)
+    assert len(errors) == 0
+
+    cfg["output"]["wl-clip"] = {"targets": ["primary"]}
+    errors = config.validate_config(cfg)
+    assert len(errors) == 0
+
+    cfg["output"]["wl-clip"] = {"targets": ["clipboard", "primary"]}
+    errors = config.validate_config(cfg)
+    assert len(errors) == 0
+
+
+def test_validate_config_rejects_invalid_wl_clip_targets():
+    """Invalid clipboard targets are rejected."""
+    cfg = config.default_config()
+    cfg["output"]["wl-clip"] = {"targets": ["invalid"]}
+
+    errors = config.validate_config(cfg)
+
+    assert len(errors) > 0
+    assert any("target" in err.lower() for err in errors)
+
+
+def test_load_config_merges_user_overrides_with_defaults(tmp_path):
+    """load_config merges user config over defaults before validating."""
+    import tomli_w
+
+    # Create minimal user config (only overrides)
+    user_config = {
+        "keys": {
+            "combos": {
+                "record_for_paste": [["KEY_A"]],
+            }
+        },
+        "whisper": {
+            "model": "base",  # Override default "turbo"
+        },
+    }
+
+    config_path = tmp_path / "config.toml"
+    with open(config_path, "wb") as f:
+        tomli_w.dump(user_config, f)
+
+    result = config_io.load_config(config_path)
+
+    # User override should be present
+    assert result["whisper"]["model"] == "base"
+
+    # Defaults should fill in missing values
+    assert result["whisper"]["language"] == "en"
+    assert result["whisper"]["beam_size"] == 5
+    assert result["audio"]["sample_rate"] == 16000
+    assert result["output"]["strategy"] == "wl-clip-simplepaste"
+
+
+def test_load_config_creates_default_if_missing_returns_full_config(tmp_path):
+    """load_config creates default config if file doesn't exist."""
+    config_path = tmp_path / "missing.toml"
+
+    result = config_io.load_config(config_path)
+
+    # Should return complete default config
+    assert result == config.default_config()
+    # File should be created
+    assert config_path.exists()
+
+
+def test_initialize_config_creates_minimal_user_config(tmp_path):
+    """initialize_config creates guided minimal config."""
+    config_path = tmp_path / "config.toml"
+
+    config_io.initialize_config(config_path)
+
+    # File should exist
+    assert config_path.exists()
+
+    # Load and verify contents
+    with open(config_path, "rb") as f:
+        config_data = tomllib.load(f)
+
+    # Should have keyboard combo (required)
+    assert "keys" in config_data
+    assert "combos" in config_data["keys"]
+    assert "record_for_paste" in config_data["keys"]["combos"]
+
+    # Should have essential whisper settings
+    assert "whisper" in config_data
+    assert "model" in config_data["whisper"]
+    assert "language" in config_data["whisper"]
+
+    # Should have output strategy
+    assert "output" in config_data
+    assert "strategy" in config_data["output"]
+    assert config_data["output"]["strategy"] == "wl-clip-simplepaste"
+
+    # Should NOT have all the advanced whisper settings
+    assert "beam_size" not in config_data["whisper"]
+    assert "vad_filter" not in config_data["whisper"]
+
+    # Should NOT have audio section (uses defaults)
+    assert "audio" not in config_data
+
+
+def test_initialize_config_does_not_overwrite_existing(tmp_path):
+    """initialize_config doesn't overwrite existing config."""
+    import tomli_w
+
+    config_path = tmp_path / "config.toml"
+
+    # Create existing config
+    existing = {"custom": "value"}
+    with open(config_path, "wb") as f:
+        tomli_w.dump(existing, f)
+
+    config_io.initialize_config(config_path)
+
+    # Should preserve existing content
+    with open(config_path, "rb") as f:
+        config_data = tomllib.load(f)
+
+    assert config_data == existing

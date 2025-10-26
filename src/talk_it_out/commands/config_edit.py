@@ -6,7 +6,8 @@ import sys
 import subprocess
 import typer
 
-from talk_it_out.framework import config, config_io
+from talk_it_out.framework import config
+from talk_it_out.framework.config_io import initialize_config, load_config, save_config
 
 
 def edit_config() -> int:
@@ -21,11 +22,11 @@ def edit_config() -> int:
     """
     config_path = config.get_config_path()
 
-    # Create default config if doesn't exist
-    if not config_path.exists():
-        cfg = config.default_config()
-        config_io.save_config(config_path, cfg)
-        print(f"✅ Created default config at {config_path}")
+    # Create minimal starter config if doesn't exist
+    config_existed = config_path.exists()
+    initialize_config(config_path)
+    if not config_existed:
+        print(f"✅ Created minimal config at {config_path}")
 
     # Get editor from environment
     editor = os.environ.get("EDITOR", "nano")
@@ -38,7 +39,7 @@ def edit_config() -> int:
 
     # Validate edited config
     try:
-        cfg = config_io.load_config(config_path)
+        cfg = load_config(config_path)
         errors = config.validate_config(cfg)
 
         if errors:
