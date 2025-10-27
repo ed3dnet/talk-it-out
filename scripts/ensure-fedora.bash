@@ -15,7 +15,11 @@ dnf install -y pyproject-rpm-macros python3-build
 echo "==> Installing system library development headers..."
 dnf install -y ffmpeg-free-devel portaudio-devel
 
-echo "==> Installing runtime system dependencies..."
+echo "==> Installing system runtime dependencies..."
 dnf install -y wl-clipboard ydotool ffmpeg-free portaudio
+
+echo "==> Installing Python dependencies from Fedora repos..."
+dnf install -y python3-typer python3-tomli-w python3-evdev \
+              python3-numpy python3-scipy python3-pyqt6
 
 echo "==> All dependencies installed successfully!"
