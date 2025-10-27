@@ -12,7 +12,8 @@ License:        GPL-3.0-or-later
 URL:            https://github.com/ed3dnet/talk-it-out
 Source0:        %{pypi_name_underscore}-%{version}.tar.gz
 
-BuildArch:      noarch
+# Note: Not noarch because we bundle PyQt6 which has compiled extensions
+# BuildArch:      noarch
 
 # Build dependencies
 BuildRequires:  python3-devel >= 3.13
@@ -90,12 +91,12 @@ install -D -m 0644 packaging/common/talk-it-out.desktop \
 # The package will be tested during CI/CD pipeline instead
 # %pyproject_check_import
 
-%files -f %{pyproject_files}
+%files
 %license LICENSE
 %doc README.md
 %{_bindir}/talk-it-out
 %{_datadir}/applications/talk-it-out.desktop
-# All bundled PyPI dependencies and their transitive dependencies
+# All Python files (our package + bundled dependencies)
 %{python3_sitelib}/*
 
 %changelog
