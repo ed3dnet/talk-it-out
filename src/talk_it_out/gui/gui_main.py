@@ -20,7 +20,7 @@ import os
 if sys.version_info[:2] == (3, 13):
     os.environ["OPENSSL_CONF"] = "/dev/null"
 
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QMessageBox
 from PyQt6.QtCore import QThread, QTimer
 from typing import Optional
 from pathlib import Path
@@ -49,22 +49,22 @@ def main(config_path: Optional[Path] = None):
     log = logging_setup.configure_logging(cfg["logging"]["level"])
     log.info("gui_mode_starting", config_path=str(path))
 
-    # Check permissions
-    ok, error = permissions.check_input_group()
-    if not ok:
-        print(error, file=sys.stderr)
-        sys.exit(1)
-
-    # Check dependencies
-    ok, error = audio_deps.check_portaudio()
-    if not ok:
-        print(error, file=sys.stderr)
-        sys.exit(1)
-
-    # Create Qt application
+    # Create Qt application FIRST so we can show error dialogs
     app = QApplication(sys.argv)
     app.setApplicationName("Talk It Out")
     app.setQuitOnLastWindowClosed(False)  # Tray mode
+
+    # Check permissions - show dialog on error
+    ok, error = permissions.check_input_group()
+    if not ok:
+        QMessageBox.critical(None, "Permission Error", error)
+        sys.exit(1)
+
+    # Check dependencies - show dialog on error
+    ok, error = audio_deps.check_portaudio()
+    if not ok:
+        QMessageBox.critical(None, "Dependency Error", error)
+        sys.exit(1)
 
     # Create SessionWorker (no parent!)
     worker = SessionWorker(cfg)
