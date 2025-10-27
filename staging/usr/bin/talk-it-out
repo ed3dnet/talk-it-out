@@ -1,0 +1,5 @@
+#!/bin/sh
+# Wrapper script for talk-it-out
+# Sets PYTHONPATH to bundled dependencies and executes main module
+export PYTHONPATH=/usr/lib/talk-it-out${PYTHONPATH:+:$PYTHONPATH}
+exec python3 -m talk_it_out.main "$@"

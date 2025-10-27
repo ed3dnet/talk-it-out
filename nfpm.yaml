@@ -1,0 +1,82 @@
+# pattern: Imperative Shell (NFPM packaging configuration)
+#
+# Purpose: Cross-distribution packaging config for talk-it-out
+# Generates both RPM (Fedora/RHEL) and DEB (Debian/Ubuntu) from single source
+
+name: talk-it-out
+version: ${VERSION}  # Injected at build time
+arch: amd64
+platform: linux
+
+maintainer: Ed Ropple <ed@edropple.com>
+license: GPL-3.0-or-later
+homepage: https://github.com/ed3dnet/talk-it-out
+description: |
+  Voice-to-text for Linux using Whisper AI. Press a keyboard shortcut, speak,
+  release to paste. Supports both CLI and GUI modes with Qt6 system tray
+  integration.
+
+# Base system dependencies (common to all formats)
+depends:
+  - python3 >= 3.13
+  - wl-clipboard
+  - ydotool >= 1.0
+
+# Distribution-specific dependencies
+overrides:
+  deb:
+    depends:
+      - libavformat-dev
+      - libavcodec-dev
+      - libavutil-dev
+      - portaudio19-dev
+    # DEB uses different version syntax: package (>= version)
+    # But we'll keep it simple for now since base deps work
+
+  rpm:
+    depends:
+      - ffmpeg-free
+      - ffmpeg-free-devel
+      - portaudio
+      - portaudio-devel
+
+# File installation layout
+# All Python dependencies (bundled) go to /usr/lib/talk-it-out/
+# Binary wrapper script goes to /usr/bin/talk-it-out
+# Desktop file goes to /usr/share/applications/
+contents:
+  # Main executable wrapper
+  - src: staging/usr/bin/talk-it-out
+    dst: /usr/bin/talk-it-out
+    file_info:
+      mode: 0755
+
+  # Bundled Python application + dependencies
+  - src: staging/usr/lib/talk-it-out/
+    dst: /usr/lib/talk-it-out/
+    type: tree
+
+  # Desktop integration
+  - src: staging/usr/share/applications/talk-it-out.desktop
+    dst: /usr/share/applications/talk-it-out.desktop
+    file_info:
+      mode: 0644
+
+  # Documentation
+  - src: LICENSE
+    dst: /usr/share/doc/talk-it-out/LICENSE
+    file_info:
+      mode: 0644
+
+  - src: README.md
+    dst: /usr/share/doc/talk-it-out/README.md
+    file_info:
+      mode: 0644
+
+# Disable automatic dependency detection
+# We bundle Python deps, so auto-detection would find wrong versions
+rpm:
+  compression: xz
+
+deb:
+  compression: xz

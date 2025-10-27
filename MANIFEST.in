@@ -1,2 +1,0 @@
-# Include packaging files in source distribution
-recursive-include packaging *.desktop *.spec *.md

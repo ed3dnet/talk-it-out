@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
 # pattern: Imperative Shell (handles system package installation)
 #
-# Purpose: Install all dependencies needed to build RPM packages on Fedora
+# Purpose: Install all dependencies needed to build packages with NFPM on Fedora
 # Usage: sudo bash scripts/ensure-fedora.bash
 
 set -euo pipefail
 
-echo "==> Installing RPM build tools..."
-dnf install -y rpm-build rpmdevtools python3-devel
-
-echo "==> Installing Python packaging tools..."
-dnf install -y pyproject-rpm-macros python3-build
+echo "==> Installing Python build tools..."
+dnf install -y python3-devel python3-pip
 
 echo "==> Installing system library development headers..."
 dnf install -y ffmpeg-free-devel portaudio-devel
@@ -18,9 +15,17 @@ dnf install -y ffmpeg-free-devel portaudio-devel
 echo "==> Installing system runtime dependencies..."
 dnf install -y wl-clipboard ydotool ffmpeg-free portaudio
 
-echo "==> Installing Python dependencies from Fedora repos..."
-dnf install -y python3-typer python3-tomli-w python3-evdev \
-              python3-numpy python3-scipy
-# Note: PyQt6 6.10+ not in Fedora (has 6.9), will be bundled from PyPI
+echo "==> Installing NFPM..."
+# Download and install NFPM from GitHub releases
+NFPM_VERSION="2.42.0"
+NFPM_URL="https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz"
+
+curl -L "$NFPM_URL" -o /tmp/nfpm.tar.gz
+tar -xzf /tmp/nfpm.tar.gz -C /tmp nfpm
+install -m 0755 /tmp/nfpm /usr/local/bin/nfpm
+rm -f /tmp/nfpm.tar.gz /tmp/nfpm
+
+echo "==> Verifying NFPM installation..."
+nfpm --version
 
 echo "==> All dependencies installed successfully!"

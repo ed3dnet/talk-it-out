@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Talk It Out
+Comment=Voice-to-text using Whisper AI
+Exec=talk-it-out gui
+Icon=audio-input-microphone
+Terminal=false
+Categories=Utility;Audio;Qt;
+Keywords=voice;speech;transcription;whisper;dictation;
