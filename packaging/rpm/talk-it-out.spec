@@ -32,8 +32,8 @@ Requires:       ffmpeg-free
 Requires:       portaudio
 Requires:       python3 >= 3.13
 
-# Python dependencies automatically detected via pyproject_buildrequires macro
-%{?python_enable_dependency_generator}
+# Disable automatic Python dependency generation - we bundle everything
+%{?python_disable_dependency_generator}
 
 %description
 Voice-to-text for Linux using Whisper AI. Press a keyboard shortcut, speak,
@@ -44,9 +44,9 @@ integration.
 %autosetup -n %{pypi_name_underscore}-%{version}
 
 %generate_buildrequires
-# Auto-detect dependencies, but exclude ones not available as Fedora RPMs
-# Those will be bundled from PyPI during %install
-%pyproject_buildrequires -x faster-whisper -x structlog -x sounddevice
+# Only generate build requirements, skip runtime dependencies (-R)
+# We'll bundle all Python deps from PyPI since many aren't in Fedora repos
+%pyproject_buildrequires -R
 
 %build
 %pyproject_wheel
@@ -55,13 +55,19 @@ integration.
 %pyproject_install
 %pyproject_save_files talk_it_out
 
-# Install dependencies from PyPI that aren't available as Fedora RPMs
-# This bundles them and their transitive dependencies into the RPM
+# Install ALL Python dependencies from PyPI (bundle into RPM)
+# This creates a self-contained RPM with no Python package dependencies
 %{__python3} -m pip install --target %{buildroot}%{python3_sitelib} \
     --upgrade --ignore-installed \
+    'typer>=0.9.0' \
     'structlog>=24.0.0' \
+    'tomli-w>=1.0.0' \
+    'evdev>=1.6.0' \
+    'numpy' \
     'sounddevice>=0.5.3' \
-    'faster-whisper>=1.2.0'
+    'scipy' \
+    'faster-whisper>=1.2.0' \
+    'pyqt6>=6.10.0'
 
 # Install .desktop file
 install -D -m 0644 packaging/common/talk-it-out.desktop \
