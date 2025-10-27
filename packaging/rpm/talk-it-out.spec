@@ -15,6 +15,7 @@ BuildArch:      noarch
 
 # Build dependencies
 BuildRequires:  python3-devel >= 3.13
+BuildRequires:  python3-build
 BuildRequires:  python3-pip
 BuildRequires:  python3-setuptools
 BuildRequires:  pyproject-rpm-macros

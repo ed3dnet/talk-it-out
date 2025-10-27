@@ -21,32 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install build tools
-        run: |
-          dnf install -y rpm-build rpmdevtools python3-devel
-          dnf install -y pyproject-rpm-macros python3-build python3-pip
-          dnf install -y wl-clipboard ydotool ffmpeg-free-devel portaudio-devel
+      - name: Install build dependencies
+        run: bash scripts/ensure-fedora.bash
 
-      - name: Prepare RPM build environment
-        run: |
-          rpmdev-setuptree
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            VERSION="0.1.0"
-          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION="${{ github.ref_name }}"
-            VERSION="${VERSION#v}"  # Remove 'v' prefix from tags
-          else
-            # Push to main - use version from pyproject.toml
-            VERSION="0.1.0"
-          fi
-          cp packaging/rpm/talk-it-out.spec ~/rpmbuild/SPECS/
-          tar --transform="s,^,talk-it-out-${VERSION}/," \
-              -czf ~/rpmbuild/SOURCES/talk-it-out-${VERSION}.tar.gz \
-              --exclude=.git --exclude=.github \
-              --exclude=packaging/debian .
-
-      - name: Build RPM
-        run: rpmbuild -ba ~/rpmbuild/SPECS/talk-it-out.spec
+      - name: Build RPM package
+        run: bash scripts/package-fedora.bash
 
       - name: Upload RPM artifacts
         uses: actions/upload-artifact@v4
