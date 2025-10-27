@@ -44,7 +44,10 @@ integration.
 %autosetup -n %{pypi_name_underscore}-%{version}
 
 %generate_buildrequires
-%pyproject_buildrequires
+# Don't auto-detect runtime dependencies - we'll handle them manually
+# Many dependencies (faster-whisper, structlog, sounddevice) aren't in Fedora repos
+# and need to be downloaded from PyPI during build
+%pyproject_buildrequires -R
 
 %build
 %pyproject_wheel
@@ -52,6 +55,14 @@ integration.
 %install
 %pyproject_install
 %pyproject_save_files talk_it_out
+
+# Install dependencies from PyPI that aren't available as Fedora RPMs
+# This bundles them and their transitive dependencies into the RPM
+%{__python3} -m pip install --target %{buildroot}%{python3_sitelib} \
+    --upgrade --ignore-installed \
+    'structlog>=24.0.0' \
+    'sounddevice>=0.5.3' \
+    'faster-whisper>=1.2.0'
 
 # Install .desktop file
 install -D -m 0644 packaging/common/talk-it-out.desktop \
