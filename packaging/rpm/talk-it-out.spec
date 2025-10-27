@@ -55,6 +55,8 @@ Requires:       python3dist(scipy)
 
 # Disable build-id generation - bundled PyPI wheels don't have build-ids
 %global _missing_build_ids_terminate_build 0
+# Disable debuginfo generation - bundled wheels are precompiled
+%global debug_package %{nil}
 
 %description
 Voice-to-text for Linux using Whisper AI. Press a keyboard shortcut, speak,
