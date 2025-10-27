@@ -12,6 +12,9 @@ dnf install -y python3-devel python3-pip
 echo "==> Installing system library development headers..."
 dnf install -y ffmpeg-free-devel portaudio-devel
 
+echo "==> Installing kernel headers (required for evdev build)..."
+dnf install -y kernel-headers
+
 echo "==> Installing system runtime dependencies..."
 dnf install -y wl-clipboard ydotool ffmpeg-free portaudio
 
