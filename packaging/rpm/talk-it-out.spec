@@ -31,7 +31,7 @@ BuildRequires:  python3dist(tomli-w) >= 1
 BuildRequires:  python3dist(evdev) >= 1.6
 BuildRequires:  python3dist(numpy)
 BuildRequires:  python3dist(scipy)
-BuildRequires:  python3dist(pyqt6) >= 6.10
+# Note: PyQt6 6.10+ not in Fedora (has 6.9), will bundle from PyPI
 
 # Runtime system dependencies
 Requires:       wl-clipboard
@@ -46,7 +46,7 @@ Requires:       python3dist(tomli-w) >= 1
 Requires:       python3dist(evdev) >= 1.6
 Requires:       python3dist(numpy)
 Requires:       python3dist(scipy)
-Requires:       python3dist(pyqt6) >= 6.10
+# Note: PyQt6 6.10+ bundled from PyPI (Fedora has 6.9)
 
 # Disable automatic Python dependency generation
 # We manually specify deps above + bundle some from PyPI
@@ -72,13 +72,14 @@ integration.
 %pyproject_install
 %pyproject_save_files talk_it_out
 
-# Bundle ONLY dependencies not available as Fedora RPMs
+# Bundle dependencies not available as Fedora RPMs (or wrong version)
 # Others are satisfied by BuildRequires above
 %{__python3} -m pip install --target %{buildroot}%{python3_sitelib} \
     --upgrade --ignore-installed \
     'structlog>=24.0.0' \
     'sounddevice>=0.5.3' \
-    'faster-whisper>=1.2.0'
+    'faster-whisper>=1.2.0' \
+    'pyqt6>=6.10.0'
 
 # Install .desktop file
 install -D -m 0644 packaging/common/talk-it-out.desktop \

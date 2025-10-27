@@ -20,6 +20,7 @@ dnf install -y wl-clipboard ydotool ffmpeg-free portaudio
 
 echo "==> Installing Python dependencies from Fedora repos..."
 dnf install -y python3-typer python3-tomli-w python3-evdev \
-              python3-numpy python3-scipy python3-pyqt6
+              python3-numpy python3-scipy
+# Note: PyQt6 6.10+ not in Fedora (has 6.9), will be bundled from PyPI
 
 echo "==> All dependencies installed successfully!"
