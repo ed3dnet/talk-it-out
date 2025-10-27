@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+override_dh_auto_install:
+	dh_auto_install
+	# Install .desktop file
+	install -D -m 0644 packaging/common/talk-it-out.desktop \
+		debian/talk-it-out/usr/share/applications/talk-it-out.desktop

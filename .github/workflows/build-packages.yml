@@ -1,0 +1,106 @@
+name: Build Linux Packages
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    paths:
+      - 'packaging/**'
+      - 'pyproject.toml'
+      - 'src/**'
+
+jobs:
+  build-rpm:
+    name: Build RPM on Fedora
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:42
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          dnf install -y rpm-build rpmdevtools python3-devel
+          dnf install -y pyproject-rpm-macros python3-build python3-pip
+          dnf install -y wl-clipboard ydotool ffmpeg-free-devel portaudio-devel
+
+      - name: Prepare RPM build environment
+        run: |
+          rpmdev-setuptree
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            VERSION="0.1.0"
+          else
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"  # Remove 'v' prefix from tags
+          fi
+          cp packaging/rpm/talk-it-out.spec ~/rpmbuild/SPECS/
+          tar --transform="s,^,talk-it-out-${VERSION}/," \
+              -czf ~/rpmbuild/SOURCES/talk-it-out-${VERSION}.tar.gz \
+              --exclude=.git --exclude=.github \
+              --exclude=packaging/debian .
+
+      - name: Build RPM
+        run: rpmbuild -ba ~/rpmbuild/SPECS/talk-it-out.spec
+
+      - name: Upload RPM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-fedora-42
+          path: ~/rpmbuild/RPMS/noarch/*.rpm
+          retention-days: 30
+
+  build-deb:
+    name: Build DEB on Ubuntu ${{ matrix.ubuntu_version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ubuntu_version: ['24.04', '25.10']
+    container:
+      image: ubuntu:${{ matrix.ubuntu_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          apt-get update
+          apt-get install -y debhelper dh-python python3-all python3-setuptools python3-build
+          # pybuild-plugin-pyproject for modern pyproject.toml support
+          apt-get install -y pybuild-plugin-pyproject || true
+          apt-get install -y wl-clipboard ydotool libavformat-dev libavcodec-dev libavutil-dev portaudio19-dev
+
+      - name: Copy debian packaging to project root
+        run: cp -r packaging/debian .
+
+      - name: Build DEB package
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Upload DEB artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-ubuntu-${{ matrix.ubuntu_version }}
+          path: ../*.deb
+          retention-days: 30
+
+  release:
+    name: Create GitHub Release
+    needs: [build-rpm, build-deb]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: packages
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packages/*/*.rpm
+            packages/*/*.deb
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') }}
