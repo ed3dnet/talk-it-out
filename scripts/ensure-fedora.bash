@@ -6,6 +6,9 @@
 
 set -euo pipefail
 
+echo "==> Installing development tools (gcc, make, etc.)..."
+dnf install -y @development-tools
+
 echo "==> Installing Python build tools..."
 dnf install -y python3-devel python3-pip
 
