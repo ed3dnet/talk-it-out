@@ -32,7 +32,16 @@ Requires:       ffmpeg-free
 Requires:       portaudio
 Requires:       python3 >= 3.13
 
-# Disable automatic Python dependency generation - we bundle everything
+# Runtime Python dependencies (from Fedora RPMs)
+Requires:       python3dist(typer) >= 0.9
+Requires:       python3dist(tomli-w) >= 1
+Requires:       python3dist(evdev) >= 1.6
+Requires:       python3dist(numpy)
+Requires:       python3dist(scipy)
+Requires:       python3dist(pyqt6) >= 6.10
+
+# Disable automatic Python dependency generation
+# We manually specify deps above + bundle some from PyPI
 %{?python_disable_dependency_generator}
 
 %description
@@ -44,9 +53,17 @@ integration.
 %autosetup -n %{pypi_name_underscore}-%{version}
 
 %generate_buildrequires
-# Only generate build requirements, skip runtime dependencies (-R)
-# We'll bundle all Python deps from PyPI since many aren't in Fedora repos
+# Generate build requirements only (no runtime dependencies with -R)
+# We manually specify what to use from Fedora vs bundle from PyPI
 %pyproject_buildrequires -R
+
+# Manually require Python packages available as Fedora RPMs
+BuildRequires:  python3dist(typer) >= 0.9
+BuildRequires:  python3dist(tomli-w) >= 1
+BuildRequires:  python3dist(evdev) >= 1.6
+BuildRequires:  python3dist(numpy)
+BuildRequires:  python3dist(scipy)
+BuildRequires:  python3dist(pyqt6) >= 6.10
 
 %build
 %pyproject_wheel
@@ -55,19 +72,13 @@ integration.
 %pyproject_install
 %pyproject_save_files talk_it_out
 
-# Install ALL Python dependencies from PyPI (bundle into RPM)
-# This creates a self-contained RPM with no Python package dependencies
+# Bundle ONLY dependencies not available as Fedora RPMs
+# Others are satisfied by BuildRequires above
 %{__python3} -m pip install --target %{buildroot}%{python3_sitelib} \
     --upgrade --ignore-installed \
-    'typer>=0.9.0' \
     'structlog>=24.0.0' \
-    'tomli-w>=1.0.0' \
-    'evdev>=1.6.0' \
-    'numpy' \
     'sounddevice>=0.5.3' \
-    'scipy' \
-    'faster-whisper>=1.2.0' \
-    'pyqt6>=6.10.0'
+    'faster-whisper>=1.2.0'
 
 # Install .desktop file
 install -D -m 0644 packaging/common/talk-it-out.desktop \
