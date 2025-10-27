@@ -31,7 +31,7 @@ Requires:       ffmpeg-free
 Requires:       portaudio
 Requires:       python3 >= 3.13
 
-# Python dependencies automatically detected via %pyproject_buildrequires
+# Python dependencies automatically detected via pyproject_buildrequires macro
 %{?python_enable_dependency_generator}
 
 %description
