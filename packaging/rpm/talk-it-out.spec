@@ -44,10 +44,9 @@ integration.
 %autosetup -n %{pypi_name_underscore}-%{version}
 
 %generate_buildrequires
-# Don't auto-detect runtime dependencies - we'll handle them manually
-# Many dependencies (faster-whisper, structlog, sounddevice) aren't in Fedora repos
-# and need to be downloaded from PyPI during build
-%pyproject_buildrequires -R
+# Auto-detect dependencies, but exclude ones not available as Fedora RPMs
+# Those will be bundled from PyPI during %install
+%pyproject_buildrequires -x faster-whisper -x structlog -x sounddevice
 
 %build
 %pyproject_wheel
