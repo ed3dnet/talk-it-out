@@ -53,6 +53,9 @@ Requires:       python3dist(scipy)
 # We manually specify deps above + bundle some from PyPI
 %{?python_disable_dependency_generator}
 
+# Disable build-id generation - bundled PyPI wheels don't have build-ids
+%global _missing_build_ids_terminate_build 0
+
 %description
 Voice-to-text for Linux using Whisper AI. Press a keyboard shortcut, speak,
 release to paste. Supports both CLI and GUI modes with Qt6 system tray
