@@ -25,6 +25,14 @@ BuildRequires:  pyproject-rpm-macros
 BuildRequires:  ffmpeg-free-devel
 BuildRequires:  portaudio-devel
 
+# Python dependencies available as Fedora RPMs (build and runtime)
+BuildRequires:  python3dist(typer) >= 0.9
+BuildRequires:  python3dist(tomli-w) >= 1
+BuildRequires:  python3dist(evdev) >= 1.6
+BuildRequires:  python3dist(numpy)
+BuildRequires:  python3dist(scipy)
+BuildRequires:  python3dist(pyqt6) >= 6.10
+
 # Runtime system dependencies
 Requires:       wl-clipboard
 Requires:       ydotool >= 1.0
@@ -54,16 +62,8 @@ integration.
 
 %generate_buildrequires
 # Generate build requirements only (no runtime dependencies with -R)
-# We manually specify what to use from Fedora vs bundle from PyPI
+# Python package deps are manually specified in BuildRequires above
 %pyproject_buildrequires -R
-
-# Manually require Python packages available as Fedora RPMs
-BuildRequires:  python3dist(typer) >= 0.9
-BuildRequires:  python3dist(tomli-w) >= 1
-BuildRequires:  python3dist(evdev) >= 1.6
-BuildRequires:  python3dist(numpy)
-BuildRequires:  python3dist(scipy)
-BuildRequires:  python3dist(pyqt6) >= 6.10
 
 %build
 %pyproject_wheel
