@@ -1,8 +1,20 @@
 # pattern: Imperative Shell
 # Orchestrates framework components and handles I/O
 
-import typer
+# Workaround for Python 3.13 + OpenSSL 3.5 incompatibility
+# MUST be first, before any imports that might initialize SSL
+# Python 3.13 does not support OpenSSL 3.5 (support added in Python 3.14+)
+# On systems with OpenSSL 3.5 (e.g., Fedora 42), Python 3.13 fails to create
+# ssl.SSLContext with MODULE_INITIALIZATION_ERROR due to incompatible OpenSSL
+# configuration file at /etc/pki/tls/openssl.cnf
+# Setting OPENSSL_CONF=/dev/null bypasses the problematic config file
+# See: https://github.com/python/cpython/issues/132339
 import sys
+import os
+if sys.version_info[:2] == (3, 13):
+    os.environ['OPENSSL_CONF'] = '/dev/null'
+
+import typer
 import signal
 import threading
 import queue

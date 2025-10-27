@@ -5,15 +5,35 @@ GUI mode entry point.
 Launches Qt6 application with SessionWorker, dynamic tray icon, and system notifications.
 """
 
+# Workaround for Python 3.13 + OpenSSL 3.5 incompatibility
+# MUST be first, before any imports that might initialize SSL
+# Python 3.13 does not support OpenSSL 3.5 (support added in Python 3.14+)
+# On systems with OpenSSL 3.5 (e.g., Fedora 42), Python 3.13 fails to create
+# ssl.SSLContext with MODULE_INITIALIZATION_ERROR due to incompatible OpenSSL
+# configuration file at /etc/pki/tls/openssl.cnf
+# This particularly affects QThread workers which re-initialize OpenSSL in their context
+# Setting OPENSSL_CONF=/dev/null bypasses the problematic config file
+# See: https://github.com/python/cpython/issues/132339
+import sys
+import os
+
+if sys.version_info[:2] == (3, 13):
+    os.environ["OPENSSL_CONF"] = "/dev/null"
+
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QThread, QTimer
 from typing import Optional
 from pathlib import Path
-import sys
 import structlog
 import signal
 
-from talk_it_out.framework import config, config_io, logging_setup, permissions, audio_deps
+from talk_it_out.framework import (
+    config,
+    config_io,
+    logging_setup,
+    permissions,
+    audio_deps,
+)
 from talk_it_out.gui.worker import SessionWorker
 from talk_it_out.gui.notifications import NotificationManager
 from talk_it_out.gui.tray import TrayIcon
@@ -82,7 +102,9 @@ def main(config_path: Optional[Path] = None):
     tray = TrayIcon(app)
 
     # Connect SessionWorker signals to tray icon state changes
-    worker.session_ready.connect(tray.set_state_idle)  # Loading -> Idle after Whisper loads
+    worker.session_ready.connect(
+        tray.set_state_idle
+    )  # Loading -> Idle after Whisper loads
     worker.recording_started.connect(tray.set_state_recording)
     worker.transcription_started.connect(tray.set_state_transcribing)
     worker.transcription_complete.connect(tray.set_state_idle)
@@ -107,5 +129,5 @@ def main(config_path: Optional[Path] = None):
     thread.start()
     log.info("gui_mode_ready")
 
-    print("GUI mode running - check system tray (Ctrl+C or right-click tray → Quit)")
+    # print("GUI mode running - check system tray (Ctrl+C or right-click tray → Quit)")
     sys.exit(app.exec())
