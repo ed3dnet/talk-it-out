@@ -2,6 +2,8 @@ name: Build Linux Packages
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*.*.*'
   pull_request:
@@ -30,9 +32,12 @@ jobs:
           rpmdev-setuptree
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             VERSION="0.1.0"
-          else
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
             VERSION="${{ github.ref_name }}"
             VERSION="${VERSION#v}"  # Remove 'v' prefix from tags
+          else
+            # Push to main - use version from pyproject.toml
+            VERSION="0.1.0"
           fi
           cp packaging/rpm/talk-it-out.spec ~/rpmbuild/SPECS/
           tar --transform="s,^,talk-it-out-${VERSION}/," \
