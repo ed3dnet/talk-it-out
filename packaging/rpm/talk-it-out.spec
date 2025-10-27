@@ -1,5 +1,6 @@
 # pattern: Imperative Shell (handles packaging/installation)
 %global pypi_name talk-it-out
+%global pypi_name_underscore talk_it_out
 %global pypi_version 0.1.0
 
 Name:           %{pypi_name}
@@ -9,7 +10,7 @@ Summary:        Voice-to-text for Linux using Whisper AI
 
 License:        GPL-3.0-or-later
 URL:            https://github.com/ed3dnet/talk-it-out
-Source0:        %{pypi_name}-%{version}.tar.gz
+Source0:        %{pypi_name_underscore}-%{version}.tar.gz
 
 BuildArch:      noarch
 
@@ -40,7 +41,7 @@ release to paste. Supports both CLI and GUI modes with Qt6 system tray
 integration.
 
 %prep
-%autosetup -n %{pypi_name}-%{version}
+%autosetup -n %{pypi_name_underscore}-%{version}
 
 %generate_buildrequires
 %pyproject_buildrequires

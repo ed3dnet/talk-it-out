@@ -40,8 +40,9 @@ if [[ ! -d ~/rpmbuild ]]; then
 fi
 
 # Copy source tarball to RPM SOURCES directory
+# Note: Keep the Python normalized name (underscore) as created by python3 -m build
 echo "==> Copying source tarball to ~/rpmbuild/SOURCES/..."
-cp dist/talk_it_out-${VERSION}.tar.gz ~/rpmbuild/SOURCES/talk-it-out-${VERSION}.tar.gz
+cp dist/talk_it_out-${VERSION}.tar.gz ~/rpmbuild/SOURCES/talk_it_out-${VERSION}.tar.gz
 
 # Copy spec file to RPM SPECS directory
 echo "==> Copying spec file to ~/rpmbuild/SPECS/..."
