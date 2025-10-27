@@ -33,6 +33,8 @@ def default_config() -> dict:
             "sample_rate": 16000,
             "channels": 1,
             "device": "",
+            "min_duration_ms": 100,
+            "debug_save_audio": False,
         },
         "whisper": {
             "model": "turbo",
@@ -195,6 +197,18 @@ def validate_config(cfg: dict) -> list[str]:
         errors.append("Missing audio.channels")
     elif cfg["audio"]["channels"] not in (1, 2):
         errors.append("audio.channels must be 1 or 2")
+
+    # Validate audio.min_duration_ms
+    if "audio" not in cfg or "min_duration_ms" not in cfg["audio"]:
+        errors.append("Missing audio.min_duration_ms")
+    elif cfg["audio"]["min_duration_ms"] <= 0:
+        errors.append("audio.min_duration_ms must be positive")
+
+    # Validate audio.debug_save_audio
+    if "audio" not in cfg or "debug_save_audio" not in cfg["audio"]:
+        errors.append("Missing audio.debug_save_audio")
+    elif not isinstance(cfg["audio"]["debug_save_audio"], bool):
+        errors.append("audio.debug_save_audio must be a boolean")
 
     # Validate whisper.model (required)
     if "whisper" not in cfg or "model" not in cfg["whisper"]:

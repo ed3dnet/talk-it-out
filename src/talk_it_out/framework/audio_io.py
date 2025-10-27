@@ -21,7 +21,7 @@ import structlog
 import sounddevice as sd
 import numpy as np
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 from scipy.io import wavfile
 
 log = structlog.get_logger()
@@ -34,16 +34,24 @@ class AudioRecorder:
     When stopped, concatenates all chunks and returns as NumPy array.
     """
 
-    def __init__(self, sample_rate: int, channels: int, device: str = ""):
+    def __init__(
+        self,
+        sample_rate: int,
+        channels: int,
+        device: str = "",
+        on_audio_level: Optional[Callable[[float], None]] = None
+    ):
         """Initialize audio recorder.
 
         Args:
             sample_rate: Sample rate in Hz (16000 for Whisper)
             channels: Number of channels (1 for mono, 2 for stereo)
             device: Device name (empty string = default device)
+            on_audio_level: Optional callback called with normalized audio level (0.0-1.0)
         """
         self.sample_rate = sample_rate
         self.channels = channels
+        self.on_audio_level = on_audio_level
 
         # Resolve device name to index/object
         if device:
@@ -92,6 +100,12 @@ class AudioRecorder:
         if self.recording:
             # Copy data to avoid issues with buffer reuse
             self.audio_queue.put(indata.copy())
+
+        # Calculate and report audio level if callback provided
+        if self.on_audio_level:
+            # Normalize to 0.0-1.0 range (int16 max is 32768)
+            level = float(np.abs(indata).mean() / 32768.0)
+            self.on_audio_level(level)
 
     def start_recording(self) -> None:
         """Start recording audio from microphone.

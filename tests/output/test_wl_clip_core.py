@@ -1,11 +1,15 @@
 # pattern: Mixed (test file)
 # Tests pure functions (Functional Core)
 
+import os
+import tempfile
+from pathlib import Path
 import pytest
 from talk_it_out.output.strategies.wl_clip import (
     verify_clipboard_content,
     build_wl_copy_commands,
     build_shift_insert_command,
+    WlClipSimplePaste,
 )
 
 
@@ -96,3 +100,118 @@ def test_get_ydotool_env_empty_socket():
     env = get_ydotool_env("")
 
     assert env == {}
+
+
+def test_ydotool_socket_autodetect_run_user():
+    """Auto-detect socket in /run/user/{uid}/.ydotool_socket."""
+    uid = os.getuid()
+    socket_path = f"/run/user/{uid}/.ydotool_socket"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create temporary socket file
+        test_socket = Path(tmpdir) / ".ydotool_socket"
+        test_socket.touch()
+
+        # Temporarily patch os.path.exists to return True for the expected path
+        original_exists = os.path.exists
+        def mock_exists(path):
+            if path == socket_path:
+                return True
+            return original_exists(path)
+
+        os.path.exists = mock_exists
+        try:
+            strategy = WlClipSimplePaste({})
+            assert strategy.ydotool_socket == socket_path
+        finally:
+            os.path.exists = original_exists
+
+
+def test_ydotool_socket_autodetect_var_run_user():
+    """Auto-detect socket in /var/run/user/{uid}/.ydotool_socket."""
+    uid = os.getuid()
+    socket_path = f"/var/run/user/{uid}/.ydotool_socket"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create temporary socket file
+        test_socket = Path(tmpdir) / ".ydotool_socket"
+        test_socket.touch()
+
+        # Temporarily patch os.path.exists
+        original_exists = os.path.exists
+        def mock_exists(path):
+            # First path doesn't exist, second path does
+            if path == f"/run/user/{uid}/.ydotool_socket":
+                return False
+            if path == socket_path:
+                return True
+            return original_exists(path)
+
+        os.path.exists = mock_exists
+        try:
+            strategy = WlClipSimplePaste({})
+            assert strategy.ydotool_socket == socket_path
+        finally:
+            os.path.exists = original_exists
+
+
+def test_ydotool_socket_autodetect_tmp():
+    """Auto-detect socket in /tmp/.ydotool_socket."""
+    uid = os.getuid()
+    socket_path = "/tmp/.ydotool_socket"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create temporary socket file
+        test_socket = Path(tmpdir) / ".ydotool_socket"
+        test_socket.touch()
+
+        # Temporarily patch os.path.exists
+        original_exists = os.path.exists
+        def mock_exists(path):
+            # First two paths don't exist, third path does
+            if path == f"/run/user/{uid}/.ydotool_socket":
+                return False
+            if path == f"/var/run/user/{uid}/.ydotool_socket":
+                return False
+            if path == socket_path:
+                return True
+            return original_exists(path)
+
+        os.path.exists = mock_exists
+        try:
+            strategy = WlClipSimplePaste({})
+            assert strategy.ydotool_socket == socket_path
+        finally:
+            os.path.exists = original_exists
+
+
+def test_ydotool_socket_autodetect_none_found():
+    """Auto-detect returns empty string when no socket found."""
+    uid = os.getuid()
+
+    # Temporarily patch os.path.exists to return False for all paths
+    original_exists = os.path.exists
+    def mock_exists(path):
+        if path in [
+            f"/run/user/{uid}/.ydotool_socket",
+            f"/var/run/user/{uid}/.ydotool_socket",
+            "/tmp/.ydotool_socket"
+        ]:
+            return False
+        return original_exists(path)
+
+    os.path.exists = mock_exists
+    try:
+        strategy = WlClipSimplePaste({})
+        assert strategy.ydotool_socket == ""
+    finally:
+        os.path.exists = original_exists
+
+
+def test_ydotool_socket_configured_skips_autodetect():
+    """Configured socket path skips auto-detection."""
+    configured_path = "/custom/path/to/socket"
+    strategy = WlClipSimplePaste({"ydotool_socket": configured_path})
+
+    # Should use configured path, not auto-detect
+    assert strategy.ydotool_socket == configured_path

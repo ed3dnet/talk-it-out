@@ -264,6 +264,14 @@ class KeyboardMonitor:
             combos=list(self.target_combos.keys())
         )
 
+        # Debug: log the actual key codes expected for combos
+        for combo_name, combo_sets in self.target_combos.items():
+            log.debug(
+                "combo_registered",
+                combo=combo_name,
+                key_code_sets=[list(s) for s in combo_sets]
+            )
+
     def stop(self) -> None:
         """Stop keyboard monitoring and cleanup.
 

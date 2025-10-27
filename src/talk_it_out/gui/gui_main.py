@@ -1,0 +1,111 @@
+# pattern: Imperative Shell
+"""
+GUI mode entry point.
+
+Launches Qt6 application with SessionWorker, dynamic tray icon, and system notifications.
+"""
+
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QThread, QTimer
+from typing import Optional
+from pathlib import Path
+import sys
+import structlog
+import signal
+
+from talk_it_out.framework import config, config_io, logging_setup, permissions, audio_deps
+from talk_it_out.gui.worker import SessionWorker
+from talk_it_out.gui.notifications import NotificationManager
+from talk_it_out.gui.tray import TrayIcon
+
+
+def main(config_path: Optional[Path] = None):
+    """Launch GUI mode"""
+    # Load config
+    path = config_path or config.get_config_path()
+    cfg = config_io.load_config(path)
+
+    # Setup logging
+    log = logging_setup.configure_logging(cfg["logging"]["level"])
+    log.info("gui_mode_starting", config_path=str(path))
+
+    # Check permissions
+    ok, error = permissions.check_input_group()
+    if not ok:
+        print(error, file=sys.stderr)
+        sys.exit(1)
+
+    # Check dependencies
+    ok, error = audio_deps.check_portaudio()
+    if not ok:
+        print(error, file=sys.stderr)
+        sys.exit(1)
+
+    # Create Qt application
+    app = QApplication(sys.argv)
+    app.setApplicationName("Talk It Out")
+    app.setQuitOnLastWindowClosed(False)  # Tray mode
+
+    # Create SessionWorker (no parent!)
+    worker = SessionWorker(cfg)
+
+    # Create QThread
+    thread = QThread()
+    worker.moveToThread(thread)
+
+    # Connect lifecycle signals
+    thread.started.connect(worker.start_monitoring)
+    worker.shutdown_complete.connect(thread.quit)
+    thread.finished.connect(worker.deleteLater)
+    thread.finished.connect(thread.deleteLater)
+
+    # Connect shutdown
+    app.aboutToQuit.connect(worker.stop)
+
+    # Setup signal handlers for Ctrl+C
+    def signal_handler(signum, frame):
+        log.info("shutdown_requested", signal=signum)
+        app.quit()
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    # Qt's event loop blocks signal processing, so create a timer that periodically
+    # allows Python signal handlers to run
+    timer = QTimer()
+    timer.timeout.connect(lambda: None)  # Do nothing, just let signals process
+    timer.start(500)  # Every 500ms
+
+    # Create tray icon with dynamic state colorization
+    # Starts hidden until Session is initialized (Whisper loading takes several seconds)
+    # Will be shown by set_state_idle() when session_ready signal fires
+    tray = TrayIcon(app)
+
+    # Connect SessionWorker signals to tray icon state changes
+    worker.session_ready.connect(tray.set_state_idle)  # Loading -> Idle after Whisper loads
+    worker.recording_started.connect(tray.set_state_recording)
+    worker.transcription_started.connect(tray.set_state_transcribing)
+    worker.transcription_complete.connect(tray.set_state_idle)
+    worker.error_occurred.connect(tray.set_state_idle)
+
+    # Connect audio level updates for recording brightness
+    worker.audio_level_update.connect(tray.update_audio_level)
+
+    log.info("tray_icon_connected")
+
+    # Create NotificationManager
+    notifications = NotificationManager()
+
+    # Connect SessionWorker error signal to notifications
+    worker.error_occurred.connect(
+        lambda msg: notifications.send("Talk It Out Error", msg, urgency="normal")
+    )
+
+    log.info("notifications_connected")
+
+    # Start worker thread
+    thread.start()
+    log.info("gui_mode_ready")
+
+    print("GUI mode running - check system tray (Ctrl+C or right-click tray → Quit)")
+    sys.exit(app.exec())

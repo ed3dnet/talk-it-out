@@ -52,3 +52,18 @@ def test_cleanup_registry_respects_timeout():
 
     # Should have timed out around 1 second, not waited 5
     assert elapsed < 2.0
+
+
+def test_cleanup_method_uses_default_timeout():
+    """cleanup() should call run_all with default timeout"""
+    registry = signals.CleanupRegistry()
+
+    counter = {"value": 0}
+
+    def cleanup1():
+        counter["value"] += 1
+
+    registry.register(cleanup1)
+    registry.cleanup()  # Should use default timeout of 3.0
+
+    assert counter["value"] == 1

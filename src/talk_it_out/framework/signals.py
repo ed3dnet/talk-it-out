@@ -25,6 +25,16 @@ class CleanupRegistry:
         """
         self.cleanup_fns.append(fn)
 
+    def cleanup(self, timeout: float = 3.0) -> None:
+        """Run all cleanup functions with default timeout.
+
+        Convenience method for run_all() with default timeout.
+
+        Args:
+            timeout: Maximum seconds to wait for all cleanup (default 3.0)
+        """
+        self.run_all(timeout)
+
     def run_all(self, timeout: float) -> None:
         """Run all cleanup functions with timeout.
 

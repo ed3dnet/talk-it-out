@@ -101,6 +101,21 @@ class WlClipSimplePaste(OutputStrategy):
         self.clipboard_timeout = 2.0  # seconds
         self.poll_interval = 0.1  # seconds
         self.virtual_device_delay = 0.5  # seconds
+        self.log = structlog.get_logger()
+
+        # Auto-detect ydotool socket if not configured
+        if not self.ydotool_socket:
+            uid = os.getuid()
+            candidates = [
+                f"/run/user/{uid}/.ydotool_socket",
+                f"/var/run/user/{uid}/.ydotool_socket",
+                "/tmp/.ydotool_socket"
+            ]
+            for path in candidates:
+                if os.path.exists(path):
+                    self.ydotool_socket = path
+                    self.log.debug("ydotool_socket_detected", path=path)
+                    break
 
     def verify_dependencies(self) -> None:
         """Check wl-copy, wl-paste, ydotool, ydotoold.
@@ -299,16 +314,21 @@ class WlClipSimplePaste(OutputStrategy):
             result = subprocess.run(
                 cmd,
                 capture_output=True,
+                text=True,
                 env={**os.environ, **env} if env else None,
             )
 
             if result.returncode != 0:
-                stderr = result.stderr.decode() if result.stderr else ""
-                raise OutputError(f"ydotool failed: {stderr}")
+                stderr = result.stderr.strip() if result.stderr else ""
+                stdout = result.stdout.strip() if result.stdout else ""
+                error_msg = stderr or stdout or "(no error output)"
+                raise OutputError(f"ydotool failed (exit {result.returncode}): {error_msg}")
 
         except subprocess.CalledProcessError as e:
-            stderr = e.stderr.decode() if e.stderr else ""
-            raise OutputError(f"ydotool failed: {stderr}")
+            stderr = e.stderr.strip() if e.stderr else ""
+            stdout = e.stdout.strip() if e.stdout else ""
+            error_msg = stderr or stdout or "(no error output)"
+            raise OutputError(f"ydotool failed (exit {e.returncode}): {error_msg}")
         except FileNotFoundError:
             raise OutputError("ydotool not found - run verify_dependencies() first")
 

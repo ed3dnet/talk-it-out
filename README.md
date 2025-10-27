@@ -112,18 +112,49 @@ talk-it-out run
 
 ## Usage
 
-### Start Listener
+### CLI Mode (default)
 
 ```bash
-# Run with default config
 talk-it-out run
+```
 
+Runs in terminal with keyboard shortcuts for voice-to-text.
+
+**Options:**
+
+```bash
 # Override log level
 talk-it-out run --log-level DEBUG
 
 # Use custom config
 talk-it-out run --config /path/to/config.toml
 ```
+
+### GUI Mode
+
+```bash
+talk-it-out gui
+```
+
+Runs with visual indicator and system tray:
+
+- **Floating indicator**: Shows workflow state
+  - Red pill: Recording (brightness varies with voice volume)
+  - Blue pill (pulsing): Transcribing
+  - Hidden: Idle
+
+- **System tray**: Right-click icon → Quit to exit
+
+- **Desktop notifications**: Errors shown as notifications
+
+**Requirements:**
+- Wayland compositor (KDE Plasma, GNOME, etc.)
+- D-Bus session bus for notifications
+
+**Platform compatibility:**
+- Primary: KDE Plasma Wayland
+- Works on: GNOME Wayland, other Wayland compositors
+- X11: Works with `QT_QPA_PLATFORM=xcb`
 
 ### Edit Configuration
 
