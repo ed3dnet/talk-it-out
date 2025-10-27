@@ -95,18 +95,7 @@ install -D -m 0644 packaging/common/talk-it-out.desktop \
 %doc README.md
 %{_bindir}/talk-it-out
 %{_datadir}/applications/talk-it-out.desktop
-# Bundled PyPI dependencies
-%{python3_sitelib}/structlog/
-%{python3_sitelib}/structlog-*.dist-info/
-%{python3_sitelib}/sounddevice.py
-%{python3_sitelib}/__pycache__/sounddevice*.pyc
-%{python3_sitelib}/sounddevice-*.dist-info/
-%{python3_sitelib}/faster_whisper/
-%{python3_sitelib}/faster_whisper-*.dist-info/
-%{python3_sitelib}/PyQt6/
-%{python3_sitelib}/PyQt6-*.dist-info/
-%{python3_sitelib}/PyQt6_sip*
-# Transitive dependencies of bundled packages
+# All bundled PyPI dependencies and their transitive dependencies
 %{python3_sitelib}/*
 
 %changelog
