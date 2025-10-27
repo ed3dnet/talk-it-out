@@ -37,13 +37,12 @@ mkdir -p staging/usr/share/applications
 echo "==> Building Python wheel..."
 uv build --wheel --out-dir dist/
 
-# Install the wheel + all dependencies to staging area
-# Use --only-binary for most packages, but allow building evdev from source
-# (evdev doesn't provide precompiled wheels)
+# Install the application + all dependencies to staging area
+# Install from the current directory to ensure full dependency resolution
 echo "==> Installing Python application and dependencies to staging..."
 uv pip install --target staging/usr/lib/talk-it-out \
     --python /usr/bin/python3 \
-    dist/talk_it_out-${VERSION}-py3-none-any.whl
+    .
 
 # Create wrapper script that sets PYTHONPATH
 echo "==> Creating wrapper script..."

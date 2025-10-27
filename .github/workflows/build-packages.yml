@@ -4,71 +4,54 @@ on:
   push:
     branches:
       - main
+      - "ed/packaging*"
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
   pull_request:
     paths:
-      - 'packaging/**'
-      - 'pyproject.toml'
-      - 'src/**'
+      - "nfpm.yaml"
+      - "scripts/build-nfpm.bash"
+      - "scripts/ensure-fedora.bash"
+      - "pyproject.toml"
+      - "src/**"
 
 jobs:
-  build-rpm:
-    name: Build RPM on Fedora
+  build-packages:
+    name: Build RPM and DEB with NFPM
     runs-on: ubuntu-latest
     container:
       image: fedora:42
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Install build dependencies
         run: bash scripts/ensure-fedora.bash
 
-      - name: Build RPM package
-        run: bash scripts/package-fedora.bash
+      - name: Build packages with NFPM
+        run: bash scripts/build-nfpm.bash
 
-      - name: Upload RPM artifacts
+      - name: Upload RPM artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rpm-fedora-42
-          path: ~/rpmbuild/RPMS/noarch/*.rpm
+          name: rpm-package
+          path: talk-it-out-*.rpm
           retention-days: 30
 
-  build-deb:
-    name: Build DEB on Ubuntu ${{ matrix.ubuntu_version }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        ubuntu_version: ['24.04', '25.10']
-    container:
-      image: ubuntu:${{ matrix.ubuntu_version }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install build tools
-        run: |
-          apt-get update
-          apt-get install -y debhelper dh-python python3-all python3-setuptools python3-build
-          # pybuild-plugin-pyproject for modern pyproject.toml support
-          apt-get install -y pybuild-plugin-pyproject || true
-          apt-get install -y wl-clipboard ydotool libavformat-dev libavcodec-dev libavutil-dev portaudio19-dev
-
-      - name: Copy debian packaging to project root
-        run: cp -r packaging/debian .
-
-      - name: Build DEB package
-        run: dpkg-buildpackage -us -uc -b
-
-      - name: Upload DEB artifacts
+      - name: Upload DEB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: deb-ubuntu-${{ matrix.ubuntu_version }}
-          path: ../*.deb
+          name: deb-package
+          path: talk-it-out_*.deb
           retention-days: 30
 
   release:
     name: Create GitHub Release
-    needs: [build-rpm, build-deb]
+    needs: [build-packages]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:

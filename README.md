@@ -42,6 +42,18 @@ sudo usermod -a -G input $USER
 
 ### Installing talk-it-out
 
+**From package (recommended):**
+
+```bash
+# Fedora
+sudo dnf install ./talk-it-out-0.1.0-1.x86_64.rpm
+
+# Ubuntu/Debian
+sudo apt install ./talk-it-out_0.1.0_amd64.deb
+```
+
+**From PyPI:**
+
 ```bash
 # Install with uv (recommended)
 uv pip install talk-it-out
@@ -49,6 +61,39 @@ uv pip install talk-it-out
 # Or with pip
 pip install talk-it-out
 ```
+
+### GPU Acceleration (Optional)
+
+By default, talk-it-out uses CPU for transcription. For faster processing with NVIDIA GPUs:
+
+**Requirements:**
+- NVIDIA GPU with CUDA support
+- CUDA 12.x
+- cuBLAS for CUDA 12
+- cuDNN 9 for CUDA 12
+
+**Installation options:**
+
+1. **Docker** (easiest):
+   ```bash
+   docker run --gpus all nvidia/cuda:12.3.2-cudnn9-runtime-ubuntu22.04
+   ```
+
+2. **pip packages** (Linux):
+   ```bash
+   pip install nvidia-cublas-cu12 nvidia-cudnn-cu12==9.*
+   export LD_LIBRARY_PATH=`python3 -c 'import nvidia.cublas.lib; import nvidia.cudnn.lib; print(f"{os.path.dirname(nvidia.cublas.lib.__file__)}:{os.path.dirname(nvidia.cudnn.lib.__file__)}")'`
+   ```
+
+3. **Manual install**: Follow [NVIDIA's official installation guide](https://developer.nvidia.com/cuda-downloads)
+
+**Configuration:**
+```toml
+[whisper]
+device = "cuda"  # Force CUDA (auto-detects by default)
+```
+
+If CUDA libraries are not found, talk-it-out automatically falls back to CPU.
 
 ## Usage
 
