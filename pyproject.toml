@@ -43,8 +43,10 @@ talk-it-out = "talk_it_out.main:app"
 
 [dependency-groups]
 dev = [
+    "faster-whisper>=1.2.0",
     "pyright>=1.1.407",
     "pytest>=8.0.0",
+    "torch>=2.9.0",
 ]
 
 [tool.uv]

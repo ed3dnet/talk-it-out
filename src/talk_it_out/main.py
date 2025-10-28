@@ -14,6 +14,12 @@ import os
 if sys.version_info[:2] == (3, 13):
     os.environ['OPENSSL_CONF'] = '/dev/null'
 
+# Setup CUDA library paths before any CUDA libraries are imported
+# PyTorch bundles cuDNN but doesn't add it to LD_LIBRARY_PATH automatically
+# This must happen before importing any modules that might use CUDA
+from talk_it_out.framework.cuda_deps import setup_cuda_library_path
+setup_cuda_library_path()
+
 import typer
 import signal
 import threading
