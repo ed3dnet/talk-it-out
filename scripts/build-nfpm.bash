@@ -44,13 +44,21 @@ uv pip install --target staging/usr/lib/talk-it-out \
     --python /usr/bin/python3 \
     .
 
-# Create wrapper script that sets PYTHONPATH
+# Create wrapper script that sets PYTHONPATH and LD_LIBRARY_PATH
 echo "==> Creating wrapper script..."
 cat > staging/usr/bin/talk-it-out << 'EOF'
 #!/bin/sh
 # Wrapper script for talk-it-out
-# Sets PYTHONPATH to bundled dependencies and executes main module
+# Sets PYTHONPATH to bundled dependencies and LD_LIBRARY_PATH for cuDNN
 export PYTHONPATH=/usr/lib/talk-it-out${PYTHONPATH:+:$PYTHONPATH}
+
+# Add PyTorch's bundled cuDNN to LD_LIBRARY_PATH if it exists
+# This prevents segfaults on systems with NVIDIA GPU but no system cuDNN
+CUDNN_PATH="/usr/lib/talk-it-out/nvidia/cudnn/lib"
+if [ -d "$CUDNN_PATH" ]; then
+    export LD_LIBRARY_PATH="$CUDNN_PATH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+
 exec python3 -m talk_it_out.main "$@"
 EOF
 chmod +x staging/usr/bin/talk-it-out

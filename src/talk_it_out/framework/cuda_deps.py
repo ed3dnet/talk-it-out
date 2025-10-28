@@ -13,22 +13,40 @@ def find_pytorch_cudnn_path() -> Optional[Path]:
 
     PyTorch bundles cuDNN in the nvidia-cudnn-cu12 package, but it's not
     automatically added to the system library path. This function locates
-    the bundled cuDNN libraries.
+    the bundled cuDNN libraries in both development (venv) and installed
+    (RPM/DEB) environments.
 
     Returns:
         Path to cuDNN lib directory if found, None otherwise
     """
+    # List of potential search paths
+    search_paths = []
+
+    # 1. Check site-packages (for venv/development installations)
     try:
-        # Check all site-packages directories
-        for site_pkg in site.getsitepackages():
-            cudnn_lib = Path(site_pkg) / "nvidia" / "cudnn" / "lib"
-            if cudnn_lib.exists() and cudnn_lib.is_dir():
-                # Verify it actually contains cuDNN libraries
-                if any(cudnn_lib.glob("libcudnn_ops.so*")):
-                    return cudnn_lib
+        search_paths.extend(site.getsitepackages())
     except Exception:
-        # Don't crash if site.getsitepackages() fails
         pass
+
+    # 2. Check bundled installation path (for RPM/DEB packages)
+    # When installed via package manager, dependencies are at /usr/lib/talk-it-out
+    search_paths.append("/usr/lib/talk-it-out")
+
+    # 3. Check PYTHONPATH entries (fallback)
+    pythonpath = os.environ.get("PYTHONPATH", "")
+    if pythonpath:
+        search_paths.extend(pythonpath.split(":"))
+
+    # Search for cuDNN in all potential locations
+    for search_path in search_paths:
+        if not search_path:  # Skip empty paths
+            continue
+
+        cudnn_lib = Path(search_path) / "nvidia" / "cudnn" / "lib"
+        if cudnn_lib.exists() and cudnn_lib.is_dir():
+            # Verify it actually contains cuDNN libraries
+            if any(cudnn_lib.glob("libcudnn_ops.so*")):
+                return cudnn_lib
 
     return None
 
