@@ -36,6 +36,7 @@ dependencies = [
     "faster-whisper>=1.2.0",
     "pyqt6>=6.10.0",
     "requests",  # Required by faster-whisper but not declared in its metadata
+    "nvidia-cudnn-cu12",  # Required for CUDA support; ctranslate2 vendors cuDNN but with mangled names
 ]
 
 [project.scripts]
