@@ -17,8 +17,11 @@ on:
 
 jobs:
   build-packages:
-    name: Build RPM and DEB with NFPM
+    name: Build ${{ matrix.packager }} with NFPM
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        packager: [rpm, deb]
     container:
       image: fedora:42
     steps:
@@ -32,21 +35,16 @@ jobs:
       - name: Install build dependencies
         run: bash scripts/ensure-fedora.bash
 
-      - name: Build packages with NFPM
-        run: bash scripts/build-nfpm.bash
+      - name: Build ${{ matrix.packager }} package with NFPM
+        run: bash scripts/build-nfpm.bash ${{ matrix.packager }}
 
-      - name: Upload RPM artifact
+      - name: Upload ${{ matrix.packager }} artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rpm-package
-          path: talk-it-out-*.rpm
-          retention-days: 30
-
-      - name: Upload DEB artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deb-package
-          path: talk-it-out_*.deb
+          name: ${{ matrix.packager }}-package
+          path: |
+            talk-it-out-*.rpm
+            talk-it-out_*.deb
           retention-days: 30
 
   release:
